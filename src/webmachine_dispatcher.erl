@@ -52,17 +52,34 @@ dispatch(HostAsString, PathAsString, DispatchList, RD) ->
     try_host_binding(DispatchList, Host, Port, Path, ExtraDepth, RD).
 
 split_host_port(HostAsString, Scheme) ->
-    case string:tokens(HostAsString, ":") of
-        [HostPart, PortPart] ->
-            {split_host(HostPart), list_to_integer(PortPart)};
-        [HostPart] ->
+    case split_host_port0(HostAsString) of
+        {HostPart, no_port} ->
             {split_host(HostPart), default_port(Scheme)};
-        [] ->
+        {HostPart, PortPart} ->
+            {split_host(HostPart), list_to_integer(PortPart)};
+        no_host ->
             %% no host header
             {[], default_port(Scheme)};
         _ ->
             %% Invalid host header
             {invalid_host, default_port(Scheme)}
+    end.
+
+split_host_port0("[" ++ _Rest = HostAsString) ->
+    case string:tokens(HostAsString, "[]") of
+        [HostPart, ":" ++ PortPart] ->
+            {HostPart, PortPart};
+        [HostPart] ->
+            {HostPart, no_port}
+    end;
+split_host_port0(HostAsString) ->
+    case string:tokens(HostAsString, ":") of
+        [HostPart, PortPart] ->
+            {HostPart, PortPart};
+        [HostPart] ->
+            {HostPart, no_port};
+        [] ->
+            no_host
     end.
 
 split_host(HostAsString) ->
