@@ -66,12 +66,15 @@ split_host_port(HostAsString, Scheme) ->
     end.
 
 split_host_port0("[" ++ _Rest = HostAsString) ->
-    case string:tokens(HostAsString, "[]") of
+    {Host, Port} = case string:tokens(HostAsString, "[]") of
         [HostPart, ":" ++ PortPart] ->
             {HostPart, PortPart};
         [HostPart] ->
             {HostPart, no_port}
-    end;
+    end,
+    % Preserve the enclosing [ ], to ensure that that the ipv6
+    % literal remains valid as a host value.
+    {"[" ++ Host ++ "]", Port};
 split_host_port0(HostAsString) ->
     case string:tokens(HostAsString, ":") of
         [HostPart, PortPart] ->
