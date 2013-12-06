@@ -52,17 +52,68 @@ dispatch(HostAsString, PathAsString, DispatchList, RD) ->
     try_host_binding(DispatchList, Host, Port, Path, ExtraDepth, RD).
 
 split_host_port(HostAsString, Scheme) ->
-    case string:tokens(HostAsString, ":") of
-        [HostPart, PortPart] ->
-            {split_host(HostPart), list_to_integer(PortPart)};
-        [HostPart] ->
+    case parse_port_from_host(HostAsString) of
+        {HostPart, no_port} ->
             {split_host(HostPart), default_port(Scheme)};
-        [] ->
+        {HostPart, PortPart} ->
+            {split_host(HostPart), list_to_integer(PortPart)};
+        no_host ->
             %% no host header
             {[], default_port(Scheme)};
         _ ->
             %% Invalid host header
             {invalid_host, default_port(Scheme)}
+    end.
+
+parse_port_from_host([]) ->
+    no_host;
+parse_port_from_host(S) ->
+    parse_port_from_host(lists:reverse(S), []).
+
+parse_port_from_host([], Host0) ->
+    Host = normalize_ipv6(Host0),
+    {Host, no_port};
+parse_port_from_host([$:|Rest], Acc) ->
+    Port = case Acc of
+               [] ->
+                   no_port;
+               P ->
+                   P
+           end,
+    Host = normalize_ipv6(lists:reverse(Rest)),
+    {Host, Port};
+parse_port_from_host([C|Rest], Acc) ->
+    parse_port_from_host(Rest, [C|Acc]).
+
+%% Normalize IPv6 address literals, letting non-ipv6 address literals
+%% pass through.
+%%
+%% IPv6 address literals in URLs (and therefore in the Host header)
+%% should be enclosed in square brackets. See
+%% http://www.ietf.org/rfc/rfc2732.txt. Some HTTP clients will
+%% incorrectly remove brackets from ipv6 address literals. This
+%% catches such cases and restores the brackets. The result is that
+%% wrq:host_tokens will always return a proper URL formatted ipv6
+%% address literal. The value found in the Host header depends on what
+%% the client sent.
+normalize_ipv6("[" ++ _Rest = Host) ->
+    Host;
+normalize_ipv6(Bare) ->
+    case is_ipv6_addr(Bare) of
+        true ->
+            "[" ++ Bare ++ "]";
+        false ->
+            Bare
+    end.
+
+%% Return true if `Host' is an IPv6 address literal. Assumes port has
+%% been removed and simply detects precense of `:'.
+is_ipv6_addr(Host) ->
+    case string:chr(Host, $:) of
+        0 ->
+            false;
+        _ ->
+            true
     end.
 
 split_host(HostAsString) ->
