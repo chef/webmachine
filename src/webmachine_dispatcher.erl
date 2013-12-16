@@ -70,40 +70,49 @@ parse_port_from_host([]) ->
 parse_port_from_host(S) ->
     parse_port_from_host(lists:reverse(S), []).
 
-parse_port_from_host([], Host0) ->
-    Host = normalize_ipv6(Host0),
+parse_port_from_host([], Host) ->
     {Host, no_port};
-parse_port_from_host([$:|Rest], Acc) ->
+parse_port_from_host([C|Rest] = Host0, Acc) when C == $: orelse C == $]->
     Port = case Acc of
                [] ->
                    no_port;
                P ->
                    P
            end,
-    Host = normalize_ipv6(lists:reverse(Rest)),
-    {Host, Port};
+    RevHost = case C of
+                  $] ->
+                      Host0;
+                  _ ->
+                      Rest
+           end,
+    Host1 = lists:reverse(RevHost),
+    {Host2, Port2} = handle_unbracketed_ipv6(Host1, Port),
+    Host = Host2,
+    {Host, Port2};
 parse_port_from_host([C|Rest], Acc) ->
     parse_port_from_host(Rest, [C|Acc]).
 
-%% Normalize IPv6 address literals, letting non-ipv6 address literals
-%% pass through.
+%% Attempt naive normalization of degenerate unbracketed ipv6 literals
 %%
 %% IPv6 address literals in URLs (and therefore in the Host header)
 %% should be enclosed in square brackets. See
 %% http://www.ietf.org/rfc/rfc2732.txt. Some HTTP clients will
-%% incorrectly remove brackets from ipv6 address literals. This
-%% catches such cases and restores the brackets. The result is that
-%% wrq:host_tokens will always return a proper URL formatted ipv6
-%% address literal. The value found in the Host header depends on what
-%% the client sent.
-normalize_ipv6("[" ++ _Rest = Host) ->
-    Host;
-normalize_ipv6(Bare) ->
-    case is_ipv6_addr(Bare) of
-        true ->
-            "[" ++ Bare ++ "]";
+%% incorrectly remove brackets from ipv6 address literals.
+%%
+%% An unbracketed ipv6 address literal is degenerate in URLs since you
+%% can't reliably parse it for a port. We "handle" this case by
+%% assuming default port and adding brackets.
+handle_unbracketed_ipv6("[" ++ _Rest = Host, Port) ->
+    {Host, Port};
+handle_unbracketed_ipv6(Host, Port) ->
+    case is_ipv6_addr(Host) of
         false ->
-            Bare
+            {Host, Port};
+        true ->
+            %% we have an unbracketed ipv6 literal. We assume default
+            %% port and add brackets to normalize.  Port here is just
+            %% the last group, may be part of address.
+            {"[" ++ Host ++ ":" ++ Port ++ "]", no_port}
     end.
 
 %% Return true if `Host' is an IPv6 address literal. Assumes port has
@@ -355,6 +364,21 @@ split_host_port_test() ->
                  split_host_port("foo.bar.baz", https)),
     ?assertEqual({["foo","bar","baz"], 1234},
                  split_host_port("foo.bar.baz:1234", https)).
+
+split_host_port_ipv6_test_() ->
+    Tests = [% {Input, Expect}
+             {"[::1]", {["[::1]"], 80}},
+             {"[::1]:4321", {["[::1]"], 4321}},
+             {"[fd83:4e09:e1b6:e2a3::106]", {["[fd83:4e09:e1b6:e2a3::106]"], 80}},
+             {"[fd83:4e09:e1b6:e2a3::106]:4321", {["[fd83:4e09:e1b6:e2a3::106]"], 4321}},
+             %% degenerate case of ipv6 literals without brackets
+             {"::1", {["[::1]"], 80}},
+             {"fd83:4e09:e1b6:e2a3::106", {["[fd83:4e09:e1b6:e2a3::106]"], 80}},
+             %% unbracketed with port not supported. This documents what to expect.
+             {"::1:4321", {["[::1:4321]"], 80}}
+            ],
+    [ ?_assertEqual({Input, Expect}, {Input, split_host_port(Input, http)})
+      || {Input, Expect} <- Tests ].
 
 %% port binding
 bind_port_simple_match_test() ->
