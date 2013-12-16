@@ -62,7 +62,8 @@ test_host_header_ipv6(Ctx) ->
     %% such a Host header, it is worth testing that we handle it
     %% reasonably.
     ExpectHost = add_port(Ctx, "::1"),
-    verify_host_header(Ctx, "[::1]", ExpectHost, <<"[::1]">>).
+    ExpectTokens = <<"[", ExpectHost/binary, "]">>,
+    verify_host_header(Ctx, "[::1]", ExpectHost, ExpectTokens).
 
 test_host_header_ipv6_curl(Ctx) ->
     %% curl has the desired client behavior for ipv6
