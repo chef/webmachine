@@ -46,7 +46,9 @@
          zeropad/2,
          zone/0]).
 
--record(state, {hourstamp :: non_neg_integer(),
+-type hourstamp() :: {non_neg_integer(), 1..12, 1..31, 0..24}.
+
+-record(state, {hourstamp :: hourstamp(),
                 filename :: string(),
                 handle :: file:io_device()}).
 
@@ -135,8 +137,11 @@ log_access(#wm_log_data{}=LogData) ->
 %% @doc Close a log file.
 -spec log_close(atom(), string(), file:io_device()) -> ok | {error, term()}.
 log_close(Mod, Name, FD) ->
-    log_info([Mod, ": closing log file: ", Name, $\n]),
+    log_info([a2b(Mod), ": closing log file: ", Name, $\n]),
     file:close(FD).
+
+a2b(A) ->
+    erlang:atom_to_binary(A, utf8).
 
 %% @doc Notify registered log event handler of an error event.
 -spec log_error(iolist()) -> ok.
@@ -154,13 +159,13 @@ log_info(LogMsg) ->
     gen_event:sync_notify(?EVENT_LOGGER, {log_info, LogMsg}).
 
 %% @doc Open a new log file for writing
--spec log_open(string()) -> {file:io_device(), non_neg_integer()}.
+-spec log_open(string()) -> {file:io_device(), hourstamp()}.
 log_open(FileName) ->
     DateHour = datehour(),
     {log_open(FileName, DateHour), DateHour}.
 
 %% @doc Open a new log file for writing
--spec log_open(string(), non_neg_integer()) -> file:io_device().
+-spec log_open(string(), hourstamp()) -> file:io_device().
 log_open(FileName, DateHour) ->
     LogName = FileName ++ suffix(DateHour),
     error_logger:info_msg("opening log file: ~p~n", [LogName]),
@@ -241,7 +246,7 @@ zeropad_str(NumStr, Zeros) when Zeros > 0 ->
 zeropad_str(NumStr, _) ->
     NumStr.
 
--spec zone() -> string().
+-spec zone() -> [[any()] | char()].
 zone() ->
     Time = erlang:universaltime(),
     LocalTime = calendar:universal_time_to_local_time(Time),
@@ -251,7 +256,7 @@ zone() ->
 
 %% Ugly reformatting code to get times like +0000 and -1300
 
--spec zone(integer()) -> string().
+-spec zone(float()) -> [[any()] | char()].
 zone(Val) when Val < 0 ->
     io_lib:format("-~4..0w", [trunc(abs(Val))]);
 zone(Val) when Val >= 0 ->
