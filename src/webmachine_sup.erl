@@ -49,7 +49,9 @@ upgrade() ->
                       ok
               end, ok, Kill),
 
-    [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
+    Kids = [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
+    %% everyone should have started, bad match error if not
+    [] = [ K || {error, _} = K <- Kids ],
     ok.
 
 %% @spec init([]) -> SupervisorTree
