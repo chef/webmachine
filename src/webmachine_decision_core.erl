@@ -23,6 +23,13 @@
 -author('Bryan Fink <bryan@basho.com>').
 -export([handle_request/2]).
 -include("webmachine_logger.hrl").
+-include("wm_compat.hrl").
+
+%% Suppress Erlang/OTP 21 warnings about the new method to retrieve
+%% stacktraces.
+-ifdef(OTP_RELEASE).
+-compile({nowarn_deprecated_function, [{erlang, get_stacktrace, 0}]}).
+-endif.
 
 handle_request(Resource, ReqState) ->
     _ = [erase(X) || X <- [decision, code, req_body, bytes_written, tmp_reqstate]],
@@ -31,8 +38,8 @@ handle_request(Resource, ReqState) ->
     try
         d(v3b13)
     catch
-        error:_ ->
-            error_response(erlang:get_stacktrace())
+        ?STPATTERN(error:_Reason) ->
+            error_response(?STACKTRACE)
     end.
 
 wrcall(X) ->
