@@ -37,13 +37,8 @@
 -define(HTML_CONTENT, "<html><body>Foo</body></html>").
 -define(TEXT_CONTENT, ?HTML_CONTENT).
 
--ifndef(old_hash).
 md5(Bin) ->
     erlang:md5(Bin).
--else.
-md5(Bin) ->
-    crypto:md5(Bin).
--endif.
 
 %% Suppress Erlang/OTP 21 warnings about the new method to retrieve
 %% stacktraces.
