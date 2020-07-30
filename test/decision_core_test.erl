@@ -331,8 +331,8 @@ setup() ->
         meck:new(webmachine_resource, MeckOpts),
         Ctx
     catch
-        ?STPATTERN(T:E) ->
-            io:format(user, "~n~p : ~p : ~p", [T, E, ?STACKTRACE]),
+        T:E:Stacktrace ->
+            io:format(user, "~n~p : ~p : ~p", [T, E, Stacktrace]),
             error(setup_failed)
     end.
 

@@ -210,8 +210,8 @@ resource_call(F, ReqData,
     Result = try
         %% Note: the argument list must match the definition of CALLBACK_ARITY
         apply(R_Mod, F, [ReqData, R_ModState])
-    catch ?STPATTERN(C:R) ->
-            Reason = {C, R, trim_trace(?STACKTRACE)},
+    catch C:R:Stacktrace ->
+            Reason = {C, R, trim_trace(Stacktrace)},
             {{error, Reason}, ReqData, R_ModState}
     end,
     case R_Trace of
