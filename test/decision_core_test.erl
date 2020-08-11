@@ -40,12 +40,6 @@
 md5(Bin) ->
     erlang:md5(Bin).
 
-%% Suppress Erlang/OTP 21 warnings about the new method to retrieve
-%% stacktraces.
--ifdef(OTP_RELEASE).
--compile({nowarn_deprecated_function, [{erlang, get_stacktrace, 0}]}).
--endif.
-
 -define(HTTP_1_0_METHODS, ['GET', 'POST', 'HEAD']).
 -define(HTTP_1_1_METHODS, ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
                            'CONNECT', 'OPTIONS']).
