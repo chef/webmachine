@@ -17,10 +17,20 @@
 
 -ifdef(TEST).
 
+-include("wm_compat.hrl").
 -include("wm_reqdata.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
+-export([size_stream_raises_error/2, process_post_for_created_p11/3, get_streamed_body/2, send_streamed_body/2,
+         accept_text/2, writer_response/2, known_length_body/2, range_response/2, stream_content_md5/0,
+         validate_checksum_for_md5stream/3, process_post_for_md5_stream/3, init/1, service_available/2,
+         validate_content_checksum/2, is_authorized/2, allowed_methods/2, known_methods/2, uri_too_long/2,
+         known_content_type/2, valid_entity_length/2, malformed_request/2, forbidden/2, valid_content_headers/2,
+         content_types_provided/2, content_types_accepted/2, language_available/2, charsets_provided/2,
+         encodings_provided/2, resource_exists/2, generate_etag/2, last_modified/2, moved_permanently/2,
+         moved_temporarily/2, previously_existed/2, allow_missing_post/2, post_is_create/2, process_post/2,
+         create_path/2, is_conflict/2, multiple_choices/2, base_uri/2, base_uri_add_slash/1, expires/2,
+         delete_resource/2, delete_completed/2, to_html/2]).
 
 -define(RESOURCE, atom_to_list(?MODULE)).
 -define(RESOURCE_PATH, "/" ++ ?RESOURCE).
@@ -883,10 +893,15 @@ not_modified_j18_via_h12() ->
 
 %% 304 result via L17
 not_modified_l17() ->
-    put_setting(allowed_methods, ?DEFAULT_ALLOWED_METHODS),
-    put_setting(last_modified, ?FIRST_DAY_OF_LAST_YEAR),
-    put_setting(expires, ?FIRST_DAY_OF_NEXT_YEAR),
+    % Because httpd_util:rfc1123_date converts the date to GMT, it is offset by
+    % the local time zone. To get a Last-Modified date equal to the
+    % If-Modified-Since date we must convert it back from the RFC 1123 format.
+    % This avoids the test case failing in any time zone "east" of GMT :-P
     RFC1123LastYear = httpd_util:rfc1123_date(?FIRST_DAY_OF_LAST_YEAR),
+    DateTimeLastYear = httpd_util:convert_request_date(RFC1123LastYear),
+    put_setting(allowed_methods, ?DEFAULT_ALLOWED_METHODS),
+    put_setting(last_modified, DateTimeLastYear),
+    put_setting(expires, ?FIRST_DAY_OF_NEXT_YEAR),
     Headers = [{"If-Modified-Since", RFC1123LastYear}],
     {ok, Result} = httpc:request(get, {url(), Headers}, [], []),
     ?assertMatch({{"HTTP/1.1", 304, "Not Modified"}, _, _}, Result),
