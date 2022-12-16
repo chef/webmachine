@@ -17,7 +17,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("webmachine.hrl").
 
--compile([export_all]).
+-compile([export_all, nowarn_export_all]).
 
 integration_test_() ->
     {foreach,
