@@ -20,7 +20,7 @@
 -include("wm_reqdata.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
+-compile([export_all, nowarn_export_all]).
 
 -define(RESOURCE, atom_to_list(?MODULE)).
 -define(RESOURCE_PATH, "/" ++ ?RESOURCE).
