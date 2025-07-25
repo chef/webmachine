@@ -627,8 +627,7 @@ make_reqdata(Path) ->
     %% object.
     MochiReq = mochiweb_request:new(testing, 'GET', Path, {1, 1},
                                     mochiweb_headers:make([])),
-    Req = webmachine:new_request(mochiweb, MochiReq),
-    {RD, _} = Req:get_reqdata(),
+    {Mod, Req} = webmachine:new_request(mochiweb, MochiReq),
+    {RD, _} = Mod:get_reqdata(Req),
     RD.
-
 -endif.
